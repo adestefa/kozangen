@@ -12,15 +12,22 @@ npm run dev
 ```
 
 ### VPS Deployment (Recommended)
-```bash
-# On VPS, one-time setup:
-git clone [repository-url] /opt/kozangen-dashboard
-cd /opt/kozangen-dashboard
-npm install -g pm2
 
-# Deploy/Update (run on VPS):
-git pull origin main
-./deploy.sh
+**One-Command Setup:**
+```bash
+# Run this single command on your VPS to set up everything:
+curl -sSL https://raw.githubusercontent.com/adestefa/kozangen/main/initialize-vps.sh | bash
+```
+
+**Manual Setup:**
+```bash
+# Download and run the initialization script:
+wget https://raw.githubusercontent.com/adestefa/kozangen/main/initialize-vps.sh
+chmod +x initialize-vps.sh
+./initialize-vps.sh
+
+# Future deployments:
+cd /opt/kozangen-dashboard && git pull && ./deploy.sh
 ```
 
 ## 📁 Project Structure
