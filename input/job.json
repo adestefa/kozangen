@@ -1,0 +1,28 @@
+{
+  "BATCH_NAME": "Interactive Test - Model 2 + Outfit 3/3",
+  "MODEL_DEFAULT": "MODEL_2.png",
+  "SERVICES": [
+    {
+      "name": "huhu",
+      "enabled": true
+    },
+    {
+      "name": "fitroom",
+      "enabled": true
+    },
+    {
+      "name": "fashn",
+      "enabled": true
+    }
+  ],
+  "JOBS": [
+    {
+      "outfit_number": 3,
+      "model_number": 2,
+      "model_path": "models/MODEL_2.png",
+      "top_path": "outfits/top_3.jpeg",
+      "bottom_path": "outfits/bottom_3.jpeg",
+      "garment_category": "top and bottom"
+    }
+  ]
+}

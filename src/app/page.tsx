@@ -1,103 +1,372 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+import { useState } from 'react';
+import Header from '@/components/layout/Header';
+import RunSelector from '@/components/ui/RunSelector';
+import InputPanel from '@/components/ui/InputPanel';
+import ServiceCard from '@/components/ui/ServiceCard';
+import ImageModal from '@/components/ui/ImageModal';
+import HistoryPanel from '@/components/ui/HistoryPanel';
+import { ServiceType, ServiceParameters } from '@/lib/types/service';
+import { useRuns, useRun, useInputImages } from '@/hooks/useRuns';
+import { useMultiServiceCall } from '@/hooks/useServiceCall';
+import { useNotifications, useServiceNotifications } from '@/hooks/useNotifications';
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function Dashboard() {
+  // Data fetching hooks
+  const { runs, isLoading: runsLoading, error: runsError, refetch: refetchRuns } = useRuns();
+  const { images, isLoading: imagesLoading, error: imagesError, refetch: refetchImages } = useInputImages();
+  
+  // Local state
+  const [selectedRun, setSelectedRun] = useState<string>('');
+  const [imageModal, setImageModal] = useState<{isOpen: boolean, type: 'model' | 'clothing' | 'person' | null}>({isOpen: false, type: null});
+  const [historyPanel, setHistoryPanel] = useState(false);
+  const [inputImages, setInputImages] = useState<{
+    model?: { type: 'model', path: string, filename: string };
+    clothing?: { type: 'clothing', path: string, filename: string };
+    person?: { type: 'person', path: string, filename: string };
+  }>({});
+
+  // Get selected run data
+  const { run, isLoading: runLoading, error: _runError } = useRun(selectedRun);
+  
+  // Service management
+  const { services, callService, clearServiceError, isAnyGenerating } = useMultiServiceCall();
+  
+  // Notifications
+  const { showError, showSuccess: _showSuccess, showInfo } = useNotifications();
+  const { 
+    notifyServiceStarted, 
+    notifyServiceSuccess, 
+    notifyServiceError,
+    notifyMultipleServicesStarted,
+    notifyAllServicesCompleted 
+  } = useServiceNotifications();
+
+  // Handle run selection
+  const handleRunSelect = (runId: string) => {
+    setSelectedRun(runId);
+    // Clear current input images when switching runs
+    setInputImages({});
+  };
+
+  // Handle new run creation
+  const handleNewRun = () => {
+    const newRunId = `run_${Date.now()}`;
+    setSelectedRun(newRunId);
+    setInputImages({});
+    showInfo('New Run Created', `Starting new run: ${newRunId}`);
+  };
+
+  // Handle image selection modal
+  const handleImageSelect = (type: 'model' | 'clothing' | 'person') => {
+    setImageModal({isOpen: true, type});
+  };
+
+  const handleImageModalSelect = (image: { type: string; path: string; filename: string }) => {
+    if (imageModal.type) {
+      setInputImages(prev => ({
+        ...prev,
+        [imageModal.type!]: image
+      }));
+    }
+    setImageModal({isOpen: false, type: null});
+  };
+
+  // Generate service results
+  const handleGenerate = async (service: ServiceType, parameters: ServiceParameters) => {
+    if (!selectedRun) {
+      showError('No Run Selected', 'Please select or create a run first');
+      return;
+    }
+
+    if (!inputImages.model || !inputImages.clothing || !inputImages.person) {
+      showError('Missing Images', 'Please select model, clothing, and person images');
+      return;
+    }
+
+    clearServiceError(service);
+    
+    try {
+      // Build service-specific parameters
+      const serviceParams = {
+        ...parameters,
+        model_image: inputImages.model.path,
+        top_garment: inputImages.clothing.path,
+        bottom_garment: inputImages.person.path
+      };
+
+      notifyServiceStarted(service.toUpperCase(), 'generation');
+      
+      const result = await callService(service, 'generate', selectedRun, serviceParams);
+      
+      if (result) {
+        notifyServiceSuccess(service.toUpperCase(), 'generation');
+      } else {
+        notifyServiceError(
+          service.toUpperCase(),
+          'generation',
+          services[service].error || 'Unknown error occurred',
+          () => handleGenerate(service, parameters)
+        );
+      }
+    } catch (_error) {
+      const errorMessage = _error instanceof Error ? _error.message : 'Unknown error';
+      notifyServiceError(
+        service.toUpperCase(),
+        'generation', 
+        errorMessage,
+        () => handleGenerate(service, parameters)
+      );
+    }
+  };
+
+  // Regenerate service results
+  const handleRegenerate = async (service: ServiceType, parameters: ServiceParameters) => {
+    if (!selectedRun) {
+      showError('No Run Selected', 'Please select a run first');
+      return;
+    }
+
+    clearServiceError(service);
+
+    try {
+      const serviceParams = {
+        ...parameters,
+        model_image: inputImages.model?.path || '',
+        top_garment: inputImages.clothing?.path || '',
+        bottom_garment: inputImages.person?.path || ''
+      };
+
+      notifyServiceStarted(service.toUpperCase(), 'regeneration');
+      
+      const result = await callService(service, 'regenerate', selectedRun, serviceParams);
+      
+      if (result) {
+        notifyServiceSuccess(service.toUpperCase(), 'regeneration');
+      } else {
+        notifyServiceError(
+          service.toUpperCase(),
+          'regeneration',
+          services[service].error || 'Unknown error occurred',
+          () => handleRegenerate(service, parameters)
+        );
+      }
+    } catch (_error) {
+      const errorMessage = _error instanceof Error ? _error.message : 'Unknown error';
+      notifyServiceError(
+        service.toUpperCase(),
+        'regeneration',
+        errorMessage,
+        () => handleRegenerate(service, parameters)
+      );
+    }
+  };
+
+  // Generate all services simultaneously
+  const handleGenerateAll = async () => {
+    if (!selectedRun) {
+      showError('No Run Selected', 'Please select or create a run first');
+      return;
+    }
+
+    if (!inputImages.model || !inputImages.clothing || !inputImages.person) {
+      showError('Missing Images', 'Please select model, clothing, and person images');
+      return;
+    }
+
+    const servicesToRun: ServiceType[] = ['huhu', 'fashn', 'fitroom'];
+    
+    notifyMultipleServicesStarted(servicesToRun.map(s => s.toUpperCase()));
+
+    try {
+      // Run all services in parallel
+      const promises = servicesToRun.map(async (service) => {
+        const serviceParams = {
+          model_image: inputImages.model!.path,
+          top_garment: inputImages.clothing!.path,
+          bottom_garment: inputImages.person!.path,
+        };
+
+        return callService(service, 'generate', selectedRun, serviceParams);
+      });
+
+      const results = await Promise.allSettled(promises);
+      
+      const successCount = results.filter(result => 
+        result.status === 'fulfilled' && result.value !== null
+      ).length;
+
+      notifyAllServicesCompleted(successCount, servicesToRun.length);
+    } catch (_error) {
+      showError('Batch Generation Failed', 'Some services encountered errors');
+    }
+  };
+
+  const canGenerate = inputImages.model && inputImages.clothing && inputImages.person && selectedRun;
+
+  // Loading states
+  if (runsLoading || imagesLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading dashboard...</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      </div>
+    );
+  }
+
+  // Error states
+  if (runsError || imagesError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-red-600 mb-2">Failed to load dashboard</h2>
+          <p className="text-gray-600 mb-4">{runsError || imagesError}</p>
+          <button
+            onClick={() => {
+              refetchRuns();
+              refetchImages();
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Run Selection */}
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-700">Run:</span>
+            <RunSelector
+              runs={runs}
+              selectedRun={selectedRun}
+              onRunSelect={handleRunSelect}
+              onNewRun={handleNewRun}
+            />
+          </div>
+          
+          {/* Run Info */}
+          <div className="flex items-center gap-4">
+            {selectedRun && run && (
+              <div className="text-sm text-gray-600">
+                {`Run: ${selectedRun} | Results: ${run.results?.length || 0}`}
+              </div>
+            )}
+            
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              {/* History Button */}
+              <button
+                onClick={() => setHistoryPanel(true)}
+                className="px-3 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                title="View Service History"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </button>
+              
+              {/* Generate All Button */}
+              {canGenerate && (
+                <button
+                  onClick={handleGenerateAll}
+                  disabled={isAnyGenerating}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isAnyGenerating ? 'Generating...' : 'Generate All Services'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Input Images */}
+        <div className="mb-8">
+          <InputPanel
+            images={inputImages}
+            onImageSelect={handleImageSelect}
+            disabled={runLoading}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+        </div>
+
+        {/* AI Generated Results */}
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">AI Generated Results</h2>
+          <p className="text-sm text-gray-600">
+            Click any image to view full-size. {isAnyGenerating && 'Services are currently processing...'}
+          </p>
+        </div>
+
+        {/* Service Cards Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <ServiceCard
+            service="huhu"
+            results={run?.results?.filter(r => r.service === 'huhu') || []}
+            currentVersion={1}
+            onGenerate={(params) => handleGenerate('huhu', params)}
+            onRegenerate={(params) => handleRegenerate('huhu', params)}
+            onVersionChange={() => {}}
+            isGenerating={services.huhu.isGenerating}
+            canGenerate={!!canGenerate}
+            error={services.huhu.error}
+            progress={services.huhu.progress}
+            onClearError={() => clearServiceError('huhu')}
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+          
+          <ServiceCard
+            service="fitroom"
+            results={run?.results?.filter(r => r.service === 'fitroom') || []}
+            currentVersion={1}
+            onGenerate={(params) => handleGenerate('fitroom', params)}
+            onRegenerate={(params) => handleRegenerate('fitroom', params)}
+            onVersionChange={() => {}}
+            isGenerating={services.fitroom.isGenerating}
+            canGenerate={!!canGenerate}
+            error={services.fitroom.error}
+            progress={services.fitroom.progress}
+            onClearError={() => clearServiceError('fitroom')}
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          
+          <ServiceCard
+            service="fashn"
+            results={run?.results?.filter(r => r.service === 'fashn') || []}
+            currentVersion={1}
+            onGenerate={(params) => handleGenerate('fashn', params)}
+            onRegenerate={(params) => handleRegenerate('fashn', params)}
+            onVersionChange={() => {}}
+            isGenerating={services.fashn.isGenerating}
+            canGenerate={!!canGenerate}
+            error={services.fashn.error}
+            progress={services.fashn.progress}
+            onClearError={() => clearServiceError('fashn')}
+          />
+        </div>
+      </div>
+
+      {/* Image Selection Modal */}
+      <ImageModal
+        isOpen={imageModal.isOpen}
+        onClose={() => setImageModal({isOpen: false, type: null})}
+        onSelect={handleImageModalSelect}
+        imageType={imageModal.type || 'model'}
+        images={images}
+      />
+
+      {/* History Panel */}
+      <HistoryPanel
+        isOpen={historyPanel}
+        onClose={() => setHistoryPanel(false)}
+      />
     </div>
   );
 }

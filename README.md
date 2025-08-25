@@ -1,36 +1,139 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kozan AI Dashboard
 
-## Getting Started
+Clean, modern Next.js dashboard for comparing AI fashion services (HuHu AI, FASHN AI, FitRoom).
 
-First, run the development server:
+## 🚀 Quick Start
 
+### Local Development
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### VPS Deployment (Recommended)
+```bash
+# On VPS, one-time setup:
+git clone [repository-url] /opt/kozangen-dashboard
+cd /opt/kozangen-dashboard
+npm install -g pm2
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+# Deploy/Update (run on VPS):
+git pull origin main
+./deploy.sh
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📁 Project Structure
 
-## Learn More
+```
+src/
+├── app/
+│   ├── api/                 # API routes
+│   │   ├── runs/           # Run management
+│   │   ├── images/         # Image listing
+│   │   ├── static/         # Static file serving
+│   │   └── [service]/      # Service APIs (huhu, fashn, fitroom)
+│   └── page.tsx            # Main dashboard
+├── components/
+│   ├── ui/                 # Reusable UI components
+│   └── layout/             # Layout components  
+├── lib/
+│   ├── services/           # Service managers (individual, no shared abstractions)
+│   ├── types/              # TypeScript definitions
+│   └── utils/              # Utility functions
+└── hooks/                  # React hooks (SWR data fetching)
 
-To learn more about Next.js, take a look at the following resources:
+input/                      # Input images for AI services
+├── models/                 # Model images (MODEL_1.png, etc.)
+└── outfits/               # Clothing images (top_1.jpeg, bottom_1.jpeg, etc.)
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🏗️ Architecture
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Clean & Simple**: No over-engineering, small parseable files
+- **Individual Service Managers**: Each AI service has its own manager (no shared abstractions)
+- **Comprehensive Logging**: All service calls tracked with history and analytics
+- **Graceful Error Handling**: 4-layer error system with user-friendly notifications
+- **Real-time Updates**: SWR-powered data fetching with automatic revalidation
 
-## Deploy on Vercel
+## 🔧 Environment Configuration
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Copy `.env.example` to `.env.local` for local development:
+```bash
+cp .env.example .env.local
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Production environment variables are set via `.env.production`.
+
+## 📋 Available Scripts
+
+- `npm run dev` - Development server
+- `npm run build` - Production build  
+- `npm run start` - Production server
+- `npm run lint` - ESLint checking
+- `./deploy.sh` - VPS deployment (run on VPS)
+
+## 🌐 Deployment Workflow
+
+### The Cleanest Way: GitHub → VPS Git Pull → Build → Done
+
+1. **Local Development:**
+   ```bash
+   npm run dev  # localhost:3000
+   ```
+
+2. **Commit and Push:**
+   ```bash
+   git add .
+   git commit -m "feature: description"
+   git push origin main
+   ```
+
+3. **Deploy on VPS (one command):**
+   ```bash
+   ssh kgen "cd /opt/kozangen-dashboard && git pull && ./deploy.sh"
+   ```
+
+## 🎯 Features
+
+- **Dashboard Interface**: Pixel-perfect match to design specifications
+- **Service Comparison**: Side-by-side AI service results
+- **Image Management**: Upload and organize model/clothing images
+- **Run Management**: Create, save, and replay generation sessions
+- **Service History**: Complete audit trail of all AI service calls
+- **Error Handling**: Graceful failure recovery with user notifications
+- **Real-time Updates**: Live progress tracking during generation
+
+## 🔧 Technical Stack
+
+- **Frontend**: Next.js 15, React, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, Node.js
+- **Data Fetching**: SWR for real-time updates
+- **State Management**: React hooks, no external store needed
+- **Deployment**: PM2, Nginx reverse proxy
+- **File Serving**: Static image hosting for AI service access
+
+## 🚀 Production Deployment
+
+The application is designed for VPS deployment where AI services can access hosted images:
+
+1. **Environment Setup**: Production config via `.env.production`
+2. **Static File Serving**: Images served at `/input/` routes
+3. **Process Management**: PM2 for production process management
+4. **Reverse Proxy**: Nginx configuration for production serving
+
+## 📊 Service Integration
+
+Each AI service has its own dedicated manager:
+
+- **HuHu AI Manager**: Two-step processing (top → bottom garments)
+- **FASHN AI Manager**: Quality-focused generation with polling
+- **FitRoom Manager**: Single combo call with multipart upload
+
+All services include:
+- Independent parameter validation
+- Service-specific error handling  
+- Comprehensive request/response logging
+- Real-time progress tracking
+
+Clean, simple, effective. ✨
