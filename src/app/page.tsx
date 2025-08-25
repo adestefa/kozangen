@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import RunSelector from '@/components/ui/RunSelector';
 import InputPanel from '@/components/ui/InputPanel';
@@ -26,9 +26,20 @@ export default function Dashboard() {
     clothing?: { type: 'clothing', path: string, filename: string };
     person?: { type: 'person', path: string, filename: string };
   }>({});
+  const [inputsLocked, setInputsLocked] = useState(false);
+  const [runStatus, setRunStatus] = useState<'draft' | 'locked' | 'completed' | 'archived'>('draft');
 
   // Get selected run data
   const { run, isLoading: runLoading, error: _runError } = useRun(selectedRun);
+  
+  // Load run data when run changes
+  useEffect(() => {
+    if (run) {
+      setInputImages(run.inputImages || {});
+      setRunStatus(run.status || 'draft');
+      setInputsLocked(run.status === 'locked' || run.status === 'completed');
+    }
+  }, [run]);
   
   // Service management
   const { services, callService, clearServiceError, isAnyGenerating } = useMultiServiceCall();
@@ -46,31 +57,118 @@ export default function Dashboard() {
   // Handle run selection
   const handleRunSelect = (runId: string) => {
     setSelectedRun(runId);
-    // Clear current input images when switching runs
-    setInputImages({});
+    // Don't clear images - they will load from run data
   };
 
   // Handle new run creation
-  const handleNewRun = () => {
-    const newRunId = `run_${Date.now()}`;
-    setSelectedRun(newRunId);
-    setInputImages({});
-    showInfo('New Run Created', `Starting new run: ${newRunId}`);
+  const handleNewRun = async () => {
+    try {
+      const response = await fetch('/api/runs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: `Run ${new Date().toLocaleString()}` })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        const newRunId = result.data.id;
+        setSelectedRun(newRunId);
+        setInputImages({});
+        setInputsLocked(false);
+        setRunStatus('draft');
+        refetchRuns(); // Refresh runs list
+        showInfo('New Run Created', `Starting new run: ${newRunId}`);
+      } else {
+        showError('Failed to Create Run', result.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.error('Error creating new run:', error);
+      showError('Failed to Create Run', 'Network error');
+    }
   };
 
   // Handle image selection modal
   const handleImageSelect = (type: 'model' | 'clothing' | 'person') => {
+    if (inputsLocked) {
+      // Open image in new tab for inspection when locked
+      const image = inputImages[type];
+      if (image) {
+        window.open(`/api/static/${image.path.replace('/input/', '')}`, '_blank');
+      }
+      return;
+    }
     setImageModal({isOpen: true, type});
   };
 
-  const handleImageModalSelect = (image: { type: string; path: string; filename: string }) => {
+  const handleImageModalSelect = async (image: { type: string; path: string; filename: string }) => {
     if (imageModal.type) {
-      setInputImages(prev => ({
-        ...prev,
+      const newInputImages = {
+        ...inputImages,
         [imageModal.type!]: image
-      }));
+      };
+      setInputImages(newInputImages);
+      
+      // Save to run if not locked
+      if (runStatus === 'draft' && selectedRun) {
+        try {
+          await fetch(`/api/run/${selectedRun}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              inputImages: newInputImages,
+              lastActivity: new Date().toISOString()
+            })
+          });
+        } catch (error) {
+          console.error('Error saving input images:', error);
+        }
+      }
     }
     setImageModal({isOpen: false, type: null});
+  };
+
+  // Update run with current state
+  const saveRunState = async () => {
+    if (!selectedRun) return;
+    
+    try {
+      await fetch(`/api/run/${selectedRun}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          inputImages,
+          status: runStatus,
+          lastActivity: new Date().toISOString()
+        })
+      });
+    } catch (error) {
+      console.error('Error saving run state:', error);
+    }
+  };
+
+  // Lock run when generation starts
+  const lockRun = async () => {
+    if (!selectedRun) return;
+    
+    try {
+      const response = await fetch(`/api/run/${selectedRun}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          inputImages,
+          status: 'locked',
+          lockedAt: new Date().toISOString()
+        })
+      });
+      
+      if (response.ok) {
+        setRunStatus('locked');
+        setInputsLocked(true);
+        refetchRuns(); // Update runs list
+      }
+    } catch (error) {
+      console.error('Error locking run:', error);
+    }
   };
 
   // Generate service results
@@ -86,6 +184,11 @@ export default function Dashboard() {
     }
 
     clearServiceError(service);
+    
+    // Lock inputs and run when generation starts
+    if (runStatus === 'draft') {
+      await lockRun();
+    }
     
     try {
       // Build service-specific parameters
@@ -296,6 +399,7 @@ export default function Dashboard() {
             images={inputImages}
             onImageSelect={handleImageSelect}
             disabled={runLoading}
+            locked={inputsLocked}
           />
         </div>
 

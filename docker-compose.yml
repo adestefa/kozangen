@@ -1,0 +1,26 @@
+# Docker Compose for Kozangen NextJS
+version: '3.8'
+
+services:
+  kozangen-nextjs:
+    build: .
+    container_name: kozangen-nextjs
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      # Persist runs data
+      - ./data:/app/data
+      # Mount input images
+      - ./input:/app/input
+      # Mount static results (if needed)
+      - ./static:/app/static
+    restart: unless-stopped
+    networks:
+      - kozangen-network
+
+networks:
+  kozangen-network:
+    driver: bridge

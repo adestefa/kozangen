@@ -1,0 +1,26 @@
+# Docker ignore file for Kozangen NextJS
+node_modules
+npm-debug.log*
+.next
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Local env files
+.env*.local
+
+# Development files
+.vscode
+.idea
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

@@ -1,6 +1,8 @@
 // App header component matching screenshot design
 'use client';
 
+import packageInfo from '../../../package.json';
+
 export default function Header() {
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -14,6 +16,7 @@ export default function Header() {
                 <span className="text-white font-bold text-sm">KR</span>
               </div>
               <span className="text-lg font-semibold text-gray-900">Kozan AI Studio</span>
+              <span className="text-xs text-gray-400 ml-2">v{packageInfo.version}</span>
             </div>
 
             {/* Navigation */}

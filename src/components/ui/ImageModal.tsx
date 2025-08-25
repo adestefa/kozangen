@@ -40,8 +40,17 @@ export default function ImageModal({
   };
 
   // Filter images by type and search term
+  const getImageTypeFilter = (modalType: string) => {
+    switch (modalType) {
+      case 'model': return 'model';
+      case 'clothing': return 'top';  // Map clothing to top garments
+      case 'person': return 'bottom'; // Map person to bottom garments
+      default: return modalType;
+    }
+  };
+  
   const filteredImages = images.filter(img => 
-    img.type === imageType && 
+    img.type === getImageTypeFilter(imageType) && 
     img.filename.toLowerCase().includes(filter.toLowerCase())
   );
 
@@ -123,11 +132,14 @@ export default function ImageModal({
                   `}
                 >
                   <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center p-3">
-                    {/* Mock image preview */}
-                    <div className="w-full flex-1 bg-gray-200 rounded mb-2 flex items-center justify-center">
-                      <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-                      </svg>
+                    {/* Real image preview */}
+                    <div className="w-full flex-1 rounded mb-2 overflow-hidden">
+                      <img
+                        src={`/api/static/${image.path.replace('/input/', '')}`}
+                        alt={image.filename}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-gray-600 font-medium truncate w-full">{image.filename}</p>
