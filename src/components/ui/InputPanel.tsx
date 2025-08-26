@@ -63,7 +63,7 @@ export default function InputPanel({ images, onImageSelect, disabled = false, lo
                     <div className="w-full h-full relative bg-gray-100 overflow-hidden">
                       {/* Real selected image */}
                       <img
-                        src={`/api/static/${image.path?.replace('/input/', '')}`}
+                        src={`/api/static${image.path}`}
                         alt={image?.filename}
                         className="w-full h-full object-cover"
                       />

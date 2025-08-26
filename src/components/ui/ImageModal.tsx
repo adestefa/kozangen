@@ -135,7 +135,7 @@ export default function ImageModal({
                     {/* Real image preview */}
                     <div className="w-full flex-1 rounded mb-2 overflow-hidden">
                       <img
-                        src={`/api/static/${image.path.replace('/input/', '')}`}
+                        src={`/api/static${image.path}`}
                         alt={image.filename}
                         className="w-full h-full object-cover"
                         loading="lazy"
