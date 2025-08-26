@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         version: result.version,
         parameters: result.parameters,
         processingTime: `Completed in ${Math.round((Date.now() - new Date(result.timestamp).getTime()) / 1000)}s`,
-        workflow: 'Sequential processing: top garment → intermediate → bottom garment → final'
+        workflow: 'Two-step sequential with prediction polling'
       },
       message: 'FASHN generation completed successfully',
       timestamp: new Date().toISOString()
