@@ -93,7 +93,7 @@ export default function Dashboard() {
       // Open image in new tab for inspection when locked
       const image = inputImages[type];
       if (image) {
-        window.open(`/api/static/${image.path.replace('/input/', '')}`, '_blank');
+        window.open(`/api/static${image.path}`, '_blank');
       }
       return;
     }
