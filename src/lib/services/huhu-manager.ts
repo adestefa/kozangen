@@ -1,16 +1,18 @@
-// HuHu service controller - Mock implementation simulating HuHu AI API v1 workflow
+// HuHu service controller - Real Python script execution implementation
 import { HuHuParameters, ServiceResult } from '@/lib/types/service';
 import { historyLogger } from './history-logger';
 import { ServiceError, ValidationError } from '@/lib/utils/error-handler';
 import { showServiceStarted, showServiceSuccess, showServiceError } from '@/lib/utils/notifications';
+import { spawn } from 'child_process';
+import path from 'path';
 
 /**
- * HuHu Manager - Simulates HuHu AI two-step try-on process
+ * HuHu Manager - Real Python script execution for HuHu AI two-step try-on process
  * Step 1: Apply top garment to original model
  * Step 2: Apply bottom garment to Step 1 result
  * 
- * Simulates: POST https://api-service.huhu.ai/tryon/v1 (twice)
- * Processing time: 40-80 seconds per step (80-160 seconds total)
+ * Executes: /opt/python_scripts/huhu/test_job.py
+ * Processing time: Real processing time depends on Python script execution
  */
 export class HuHuManager {
   private static instance: HuHuManager;
@@ -23,8 +25,8 @@ export class HuHuManager {
   }
 
   /**
-   * Generate full outfit using HuHu AI two-step process (mock)
-   * Simulates: POST https://api-service.huhu.ai/tryon/v1 (twice)
+   * Generate full outfit using HuHu AI two-step process (real Python execution)
+   * Executes: /opt/python_scripts/huhu/test_job.py
    */
   async generate(
     runId: string,
@@ -47,8 +49,8 @@ export class HuHuManager {
     showServiceStarted('HuHu', 'generation');
 
     try {
-      // Mock two-step generation process
-      const result = await this.mockTwoStepGenerate(runId, parameters);
+      // Execute real Python script for HuHu generation
+      const result = await this.executePythonScript(runId, parameters);
       
       const duration = Date.now() - startTime;
       historyLogger.markSuccess(callId, result.imagePath, duration);
@@ -67,7 +69,7 @@ export class HuHuManager {
   }
 
   /**
-   * Regenerate outfit with different parameters (mock)
+   * Regenerate outfit with different parameters (real Python execution)
    */
   async regenerate(
     runId: string,
@@ -91,8 +93,8 @@ export class HuHuManager {
     showServiceStarted('HuHu', 'regeneration');
 
     try {
-      // Mock regeneration with slightly different processing time
-      const result = await this.mockTwoStepGenerate(runId, parameters, version + 1);
+      // Execute real Python script for HuHu regeneration
+      const result = await this.executePythonScript(runId, parameters, version + 1);
       
       const duration = Date.now() - startTime;
       historyLogger.markSuccess(callId, result.imagePath, duration);
@@ -150,73 +152,85 @@ export class HuHuManager {
   }
 
   /**
-   * Mock HuHu AI two-step process
-   * Step 1: Apply top garment to model
-   * Step 2: Apply bottom garment to Step 1 result
+   * Execute real Python script for HuHu AI two-step process
+   * Calls the Python script at /opt/python_scripts/huhu/test_job.py
    */
-  private async mockTwoStepGenerate(
+  private async executePythonScript(
     runId: string,
     parameters: HuHuParameters,
     version = 1
   ): Promise<ServiceResult> {
-    console.log(`[HuHu Mock] Starting two-step process for run ${runId}`);
+    console.log(`[HuHu] Starting Python script execution for run ${runId}`);
 
-    // Step 1: Apply top garment
-    console.log('[HuHu Mock] Step 1: Applying top garment...');
-    await this.simulateApiCall('Step 1 - Top garment', 2, 5); // Shortened for demo: 2-5 seconds
+    const scriptPath = '/opt/python_scripts/huhu/test_job.py';
     
-    // Simulate occasional Step 1 failures
-    if (Math.random() < 0.05) { // 5% failure rate
-      throw new ServiceError('Step 1 failed: Network timeout during top garment processing', 'huhu');
-    }
-
-    const step1Result = `/temp/huhu/${runId}_step1_${Date.now()}.png`;
-    console.log(`[HuHu Mock] Step 1 completed. Intermediate result: ${step1Result}`);
-
-    // Step 2: Apply bottom garment to Step 1 result  
-    console.log('[HuHu Mock] Step 2: Applying bottom garment...');
-    await this.simulateApiCall('Step 2 - Bottom garment', 2, 5); // Shortened for demo: 2-5 seconds
-
-    // Simulate occasional Step 2 failures
-    if (Math.random() < 0.05) { // 5% failure rate
-      throw new ServiceError('Step 2 failed: Python script error during bottom garment processing', 'huhu');
-    }
-
-    const finalResult: ServiceResult = {
-      id: `huhu_${runId}_v${version}_${Date.now()}`,
-      service: 'huhu',
+    // Prepare arguments for Python script
+    const args = [
+      scriptPath,
       runId,
-      version,
-      imagePath: `/static/results/${runId}/huhu/result_v${version}.jpg`,
-      parameters,
-      timestamp: new Date(),
-      status: 'success'
-    };
+      parameters.model_image,
+      parameters.top_garment,
+      parameters.bottom_garment,
+      '--model-type', parameters.model_type || 'SD_V2',
+      '--repaint-other-garment', String(parameters.repaint_other_garment || true),
+      '--repaint-hands', String(parameters.repaint_hands || false),
+      '--repaint-feet', String(parameters.repaint_feet || false),
+      '--version', String(version)
+    ];
 
-    console.log(`[HuHu Mock] Two-step process completed. Final result: ${finalResult.imagePath}`);
-    return finalResult;
+    console.log(`[HuHu] Executing: python3 ${args.join(' ')}`);
+
+    return new Promise<ServiceResult>((resolve, reject) => {
+      const pythonProcess = spawn('python3', args, {
+        cwd: path.dirname(scriptPath),
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+        console.log(`[HuHu stdout]:`, data.toString().trim());
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+        console.error(`[HuHu stderr]:`, data.toString().trim());
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          console.log(`[HuHu] Python script completed successfully`);
+          
+          // Parse the result path from stdout or create expected path
+          const expectedPath = `/static/results/${runId}/huhu/result_v${version}.jpg`;
+          
+          const result: ServiceResult = {
+            id: `huhu_${runId}_v${version}_${Date.now()}`,
+            service: 'huhu',
+            runId,
+            version,
+            imagePath: expectedPath,
+            parameters,
+            timestamp: new Date(),
+            status: 'success'
+          };
+
+          resolve(result);
+        } else {
+          console.error(`[HuHu] Python script failed with exit code ${code}`);
+          console.error(`[HuHu] stderr: ${stderr}`);
+          reject(new ServiceError(`HuHu Python script execution failed: ${stderr}`, 'huhu'));
+        }
+      });
+
+      pythonProcess.on('error', (err) => {
+        console.error(`[HuHu] Failed to start Python script:`, err);
+        reject(new ServiceError(`Failed to start HuHu Python script: ${err.message}`, 'huhu'));
+      });
+    });
   }
 
-  /**
-   * Simulate API call with realistic processing time and potential failures
-   */
-  private async simulateApiCall(step: string, minSeconds: number, maxSeconds: number): Promise<void> {
-    const processingTime = (Math.random() * (maxSeconds - minSeconds) + minSeconds) * 1000;
-    console.log(`[HuHu Mock] ${step} processing (estimated ${(processingTime/1000).toFixed(1)}s)...`);
-
-    // Simulate network errors occasionally
-    if (Math.random() < 0.02) { // 2% network error rate
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5s then fail
-      throw new ServiceError(`Network error during ${step}`, 'huhu');
-    }
-
-    // Simulate validation errors
-    if (Math.random() < 0.02) { // 2% validation error rate
-      throw new ValidationError(`Invalid image format detected in ${step}`);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, processingTime));
-  }
 
   /**
    * Get service configuration and status
@@ -226,20 +240,28 @@ export class HuHuManager {
       service: 'huhu',
       name: 'HuHu AI',
       version: 'v1',
-      endpoint: 'https://api-service.huhu.ai/tryon/v1',
-      workflow: '2-step sequential',
-      processingTime: '4-10 seconds (demo mode)', // In real mode: 80-160 seconds
+      scriptPath: '/opt/python_scripts/huhu/test_job.py',
+      workflow: 'Python script execution with child_process.spawn',
+      processingTime: 'Depends on Python script execution time',
       features: [
+        'Real Python script execution',
         'Two-step garment application',
         'SD_V1/V2/V3/HD model support',
         'Auto garment repainting',
         'Hand and foot repainting options'
       ],
       limitations: [
-        'Requires VPS-hosted images',
-        'Sequential processing only',
+        'Requires Python script at /opt/python_scripts/huhu/',
+        'Depends on system Python3 installation',
+        'Processing time varies by system resources',
         'HD mode incompatible with repaint_other_garment'
-      ]
+      ],
+      execution: {
+        command: 'python3',
+        scriptPath: '/opt/python_scripts/huhu/test_job.py',
+        timeout: 'No timeout (depends on script)',
+        errorHandling: 'Exit code and stderr monitoring'
+      }
     };
   }
 }

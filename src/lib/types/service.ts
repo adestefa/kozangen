@@ -37,7 +37,7 @@ export interface ServiceConfig {
 }
 
 // HuHu-specific types (based on HuHu API v1 documentation)
-export interface HuHuParameters {
+export interface HuHuParameters extends Record<string, unknown> {
   model_image: string;        // Original model image URL
   top_garment: string;        // Top garment image URL  
   bottom_garment: string;     // Bottom garment image URL
@@ -48,7 +48,7 @@ export interface HuHuParameters {
 }
 
 // FASHN-specific types (based on FASHN API v1.6 documentation)
-export interface FashnParameters {
+export interface FashnParameters extends Record<string, unknown> {
   model_image: string;        // Original model image URL
   top_garment: string;        // Top garment image URL
   bottom_garment: string;     // Bottom garment image URL
@@ -59,7 +59,7 @@ export interface FashnParameters {
 }
 
 // FitRoom-specific types (based on FitRoom API v2 documentation)
-export interface FitRoomParameters {
+export interface FitRoomParameters extends Record<string, unknown> {
   model_image: string;        // Original model image file
   top_garment: string;        // Top garment image file (cloth_image)
   bottom_garment: string;     // Bottom garment image file (lower_cloth_image)

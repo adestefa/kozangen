@@ -76,10 +76,10 @@ export async function POST(request: NextRequest) {
         runId,
         service: 'fitroom',
         status: 'completed',
-        resultPath: result.resultUrl,
+        resultPath: result.imagePath,
         version: result.version,
         parameters,
-        processingTime: `Completed in ${Math.round(result.duration / 1000)}s`,
+        processingTime: 'Processing time depends on Python script execution',
         workflow: 'REAL FitRoom API - Single combo call with multipart upload'
       },
       message: 'FitRoom generation completed successfully with REAL API',

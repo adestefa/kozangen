@@ -1,17 +1,19 @@
-// FitRoom service controller - Mock implementation simulating FitRoom API v2 workflow
+// FitRoom service controller - Real Python script execution implementation
 import { FitRoomParameters, ServiceResult } from '@/lib/types/service';
 import { historyLogger } from './history-logger';
 import { ServiceError, ValidationError } from '@/lib/utils/error-handler';
 import { showServiceStarted, showServiceSuccess, showServiceError } from '@/lib/utils/notifications';
+import { spawn } from 'child_process';
+import path from 'path';
 
 /**
- * FitRoom Manager - Simulates FitRoom AI single combo try-on process
- * Single call: Upload model + top + bottom simultaneously as multipart/form-data
+ * FitRoom Manager - Real Python script execution for FitRoom AI combo try-on process
+ * Single call: Processes model + top + bottom in one Python execution
  * 
- * Simulates: POST https://platform.fitroom.app/api/tryon/v2/tasks (single combo call)
- * Processing time: 3-4 minutes (180-240 seconds)
+ * Executes: /opt/python_scripts/fitroom/test_job.py
+ * Processing time: Real processing time depends on Python script execution
  * 
- * Unlike HuHu/FASHN which use sequential steps, FitRoom processes full outfit in one call
+ * Unlike mock version, this executes actual Python scripts for generation
  */
 export class FitRoomManager {
   private static instance: FitRoomManager;
@@ -24,8 +26,8 @@ export class FitRoomManager {
   }
 
   /**
-   * Generate full outfit using FitRoom single combo process (mock)
-   * Simulates: POST https://platform.fitroom.app/api/tryon/v2/tasks
+   * Generate full outfit using FitRoom combo process (real Python execution)
+   * Executes: /opt/python_scripts/fitroom/test_job.py
    */
   async generate(
     runId: string,
@@ -48,8 +50,8 @@ export class FitRoomManager {
     showServiceStarted('FitRoom', 'generation');
 
     try {
-      // Mock single combo generation process
-      const result = await this.mockComboGenerate(runId, parameters);
+      // Execute real Python script for FitRoom generation
+      const result = await this.executePythonScript(runId, parameters);
       
       const duration = Date.now() - startTime;
       historyLogger.markSuccess(callId, result.imagePath, duration);
@@ -68,7 +70,7 @@ export class FitRoomManager {
   }
 
   /**
-   * Regenerate outfit with different parameters (mock)
+   * Regenerate outfit with different parameters (real Python execution)
    */
   async regenerate(
     runId: string,
@@ -92,8 +94,8 @@ export class FitRoomManager {
     showServiceStarted('FitRoom', 'regeneration');
 
     try {
-      // Mock regeneration with combo processing
-      const result = await this.mockComboGenerate(runId, parameters, version + 1);
+      // Execute real Python script for FitRoom regeneration
+      const result = await this.executePythonScript(runId, parameters, version + 1);
       
       const duration = Date.now() - startTime;
       historyLogger.markSuccess(callId, result.imagePath, duration);
@@ -146,132 +148,83 @@ export class FitRoomManager {
   }
 
   /**
-   * Mock FitRoom AI single combo process
-   * Uploads model + top + bottom as multipart/form-data in single call
+   * Execute real Python script for FitRoom AI combo process
+   * Calls the Python script at /opt/python_scripts/fitroom/test_job.py
    */
-  private async mockComboGenerate(
+  private async executePythonScript(
     runId: string,
     parameters: FitRoomParameters,
     version = 1
   ): Promise<ServiceResult> {
-    console.log(`[FitRoom Mock] Starting combo process for run ${runId}`);
+    console.log(`[FitRoom] Starting Python script execution for run ${runId}`);
 
-    // Simulate file download and preprocessing (FitRoom requires local files)
-    console.log('[FitRoom Mock] Downloading and preprocessing images...');
-    await this.simulateFileProcessing();
-
-    // Single combo call with all three images
-    console.log('[FitRoom Mock] Uploading multipart form-data (model + top + bottom)...');
-    await this.simulateMultipartUpload();
-
-    // Simulate combo processing - longer than individual steps but single call
-    const hdMode = parameters.hd_mode || false;
-    const processingTime = hdMode ? 8 : 6; // Demo: 6-8 seconds (real: 180-240 seconds)
+    const scriptPath = '/opt/python_scripts/fitroom/test_job.py';
     
-    console.log(`[FitRoom Mock] Processing combo outfit (HD: ${hdMode})...`);
-    await this.simulateApiCall('Combo processing', processingTime, processingTime + 2);
-
-    // Simulate status polling until completion
-    await this.simulateStatusPolling();
-
-    // Simulate occasional failures
-    if (Math.random() < 0.04) { // 4% failure rate
-      throw new ServiceError('FitRoom combo processing failed: Out of memory during HD rendering', 'fitroom');
-    }
-
-    const finalResult: ServiceResult = {
-      id: `fitroom_${runId}_v${version}_${Date.now()}`,
-      service: 'fitroom',
+    // Prepare arguments for Python script
+    const args = [
+      scriptPath,
       runId,
-      version,
-      imagePath: `/static/results/${runId}/fitroom/result_v${version}.jpg`,
-      parameters,
-      timestamp: new Date(),
-      status: 'success'
-    };
+      parameters.model_image,
+      parameters.top_garment,
+      parameters.bottom_garment,
+      '--cloth-type', parameters.cloth_type || 'combo',
+      '--hd-mode', String(parameters.hd_mode || true),
+      '--version', String(version)
+    ];
 
-    console.log(`[FitRoom Mock] Combo process completed. Final result: ${finalResult.imagePath}`);
-    return finalResult;
+    console.log(`[FitRoom] Executing: python3 ${args.join(' ')}`);
+
+    return new Promise<ServiceResult>((resolve, reject) => {
+      const pythonProcess = spawn('python3', args, {
+        cwd: path.dirname(scriptPath),
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+        console.log(`[FitRoom stdout]:`, data.toString().trim());
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+        console.error(`[FitRoom stderr]:`, data.toString().trim());
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          console.log(`[FitRoom] Python script completed successfully`);
+          
+          // Parse the result path from stdout or create expected path
+          const expectedPath = `/static/results/${runId}/fitroom/result_v${version}.jpg`;
+          
+          const result: ServiceResult = {
+            id: `fitroom_${runId}_v${version}_${Date.now()}`,
+            service: 'fitroom',
+            runId,
+            version,
+            imagePath: expectedPath,
+            parameters,
+            timestamp: new Date(),
+            status: 'success'
+          };
+
+          resolve(result);
+        } else {
+          console.error(`[FitRoom] Python script failed with exit code ${code}`);
+          console.error(`[FitRoom] stderr: ${stderr}`);
+          reject(new ServiceError(`FitRoom Python script execution failed: ${stderr}`, 'fitroom'));
+        }
+      });
+
+      pythonProcess.on('error', (err) => {
+        console.error(`[FitRoom] Failed to start Python script:`, err);
+        reject(new ServiceError(`Failed to start FitRoom Python script: ${err.message}`, 'fitroom'));
+      });
+    });
   }
 
-  /**
-   * Simulate file download and preprocessing (FitRoom needs local files)
-   */
-  private async simulateFileProcessing(): Promise<void> {
-    console.log('[FitRoom Mock] Downloading model image...');
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    console.log('[FitRoom Mock] Downloading top garment...');
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    console.log('[FitRoom Mock] Downloading bottom garment...');
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    console.log('[FitRoom Mock] Validating image formats and dimensions...');
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    // Simulate file validation errors
-    if (Math.random() < 0.02) { // 2% file validation error
-      throw new ValidationError('Invalid image dimensions detected. FitRoom requires high-resolution images');
-    }
-  }
-
-  /**
-   * Simulate multipart/form-data upload
-   */
-  private async simulateMultipartUpload(): Promise<void> {
-    console.log('[FitRoom Mock] Preparing multipart form-data...');
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Simulate upload errors
-    if (Math.random() < 0.01) { // 1% upload error
-      throw new ServiceError('Upload failed: Connection timeout during multipart upload', 'fitroom');
-    }
-
-    console.log('[FitRoom Mock] Multipart upload completed successfully');
-  }
-
-  /**
-   * Simulate FitRoom status polling (CREATED -> PROCESSING -> COMPLETED)
-   */
-  private async simulateStatusPolling(): Promise<void> {
-    console.log('[FitRoom Mock] Status: CREATED -> PROCESSING...');
-    
-    // Simulate processing status checks
-    const statusChecks = 3;
-    for (let i = 0; i < statusChecks; i++) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log(`[FitRoom Mock] Status check ${i + 1}/${statusChecks}: Still processing...`);
-    }
-    
-    console.log('[FitRoom Mock] Status: PROCESSING -> COMPLETED');
-  }
-
-  /**
-   * Simulate API call with realistic processing time and potential failures
-   */
-  private async simulateApiCall(step: string, minSeconds: number, maxSeconds: number): Promise<void> {
-    const processingTime = (Math.random() * (maxSeconds - minSeconds) + minSeconds) * 1000;
-    console.log(`[FitRoom Mock] ${step} (estimated ${(processingTime/1000).toFixed(1)}s)...`);
-
-    // Simulate API key errors
-    if (Math.random() < 0.005) { // 0.5% auth error rate
-      throw new ServiceError('Invalid X-API-KEY for FitRoom', 'fitroom');
-    }
-
-    // Simulate processing memory errors (FitRoom is resource intensive)
-    if (Math.random() < 0.02) { // 2% memory error rate
-      throw new ServiceError(`Out of memory during ${step}. Try reducing image resolution`, 'fitroom');
-    }
-
-    // Simulate network timeouts (longer processing = higher timeout risk)
-    if (Math.random() < 0.01) { // 1% timeout error rate
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5s then fail
-      throw new ServiceError(`Network timeout during ${step}`, 'fitroom');
-    }
-
-    await new Promise(resolve => setTimeout(resolve, processingTime));
-  }
 
   /**
    * Get service configuration and status
@@ -281,57 +234,50 @@ export class FitRoomManager {
       service: 'fitroom',
       name: 'FitRoom AI',
       version: 'v2',
-      endpoint: 'https://platform.fitroom.app/api/tryon/v2/tasks',
-      workflow: 'Single combo call with multipart upload',
-      processingTime: '6-8 seconds (demo mode)', // In real mode: 180-240 seconds
+      scriptPath: '/opt/python_scripts/fitroom/test_job.py',
+      workflow: 'Python script execution with child_process.spawn',
+      processingTime: 'Depends on Python script execution time',
       features: [
+        'Real Python script execution',
         'Single combo outfit processing',
-        'Multipart form-data upload',
         'HD mode support',
-        'Full outfit in one API call',
+        'Full outfit in one script execution',
         'High-quality rendering'
       ],
       limitations: [
-        'Requires local image files (no URLs)',
-        'Large file uploads (multipart)',
-        'Longer processing time vs competitors',
-        'Memory intensive processing',
-        'Single attempt per task (no retries)'
+        'Requires Python script at /opt/python_scripts/fitroom/',
+        'Depends on system Python3 installation',
+        'Processing time varies by system resources',
+        'Memory intensive processing'
       ],
-      requirements: {
-        upload: 'multipart/form-data',
-        imageFormat: 'JPG, PNG supported',
-        maxFileSize: 'Not specified in docs',
-        processing: '3-4 minutes typical'
+      execution: {
+        command: 'python3',
+        scriptPath: '/opt/python_scripts/fitroom/test_job.py',
+        timeout: 'No timeout (depends on script)',
+        errorHandling: 'Exit code and stderr monitoring'
       },
       uniqueFeatures: [
-        'Only service using combo approach',
-        'Processes both garments simultaneously',
-        'No intermediate results',
-        'Highest quality output',
-        'Single point of failure'
+        'Real Python script execution',
+        'Combo approach processing',
+        'Single execution for full outfit',
+        'HD mode parameter support'
       ]
     };
   }
 
   /**
-   * Get processing estimate based on parameters
+   * Get processing estimate based on parameters (real execution)
    */
   getProcessingEstimate(parameters: FitRoomParameters): { estimatedSeconds: number; factors: string[] } {
-    let baseTime = 180; // 3 minutes base
-    const factors: string[] = [];
+    const factors: string[] = ['Real Python script execution'];
 
     if (parameters.hd_mode) {
-      baseTime += 60; // +1 minute for HD
-      factors.push('HD mode (+1 min)');
+      factors.push('HD mode (may increase processing time)');
     }
 
-    // In demo mode, divide by 30 for faster testing
-    const demoTime = Math.floor(baseTime / 30);
-
     return {
-      estimatedSeconds: demoTime,
-      factors: factors.length > 0 ? factors : ['Standard processing']
+      estimatedSeconds: 0, // Unknown - depends on Python script performance
+      factors
     };
   }
 }
