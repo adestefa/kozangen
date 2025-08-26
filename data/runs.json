@@ -153,5 +153,38 @@
     "aiSettings": {},
     "results": [],
     "lastActivity": "2025-08-26T02:37:39.811Z"
+  },
+  {
+    "id": "run_1756176980400",
+    "name": "Run 8/25/2025, 10:56:20 PM",
+    "timestamp": "2025-08-26T02:56:20.400Z",
+    "status": "locked",
+    "inputImages": {
+      "model": {
+        "filename": "MODEL_1.png",
+        "path": "/input/models/MODEL_1.png",
+        "type": "model",
+        "size": 717445,
+        "lastModified": "2025-08-25T19:31:45.246Z"
+      },
+      "clothing": {
+        "filename": "top_1.jpeg",
+        "path": "/input/outfits/top_1.jpeg",
+        "type": "top",
+        "size": 192582,
+        "lastModified": "2025-08-25T19:31:45.258Z"
+      },
+      "person": {
+        "filename": "bottom_1.jpeg",
+        "path": "/input/outfits/bottom_1.jpeg",
+        "type": "bottom",
+        "size": 213282,
+        "lastModified": "2025-08-25T19:31:45.254Z"
+      }
+    },
+    "aiSettings": {},
+    "results": [],
+    "lastActivity": "2025-08-26T02:57:42.821Z",
+    "lockedAt": "2025-08-26T02:57:42.821Z"
   }
 ]

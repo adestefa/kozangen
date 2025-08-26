@@ -87,9 +87,9 @@ export class RunManager {
         bottom_file: runData.inputImages.person.filename,
       },
       urls: {
-        model_url: `https://192.155.91.109:3000/api/static${runData.inputImages.model.path}`,
-        top_url: `https://192.155.91.109:3000/api/static${runData.inputImages.clothing.path}`,
-        bottom_url: `https://192.155.91.109:3000/api/static${runData.inputImages.person.path}`,
+        model_url: `http://192.155.91.109:3000/api/static${runData.inputImages.model.path}`,
+        top_url: `http://192.155.91.109:3000/api/static${runData.inputImages.clothing.path}`,
+        bottom_url: `http://192.155.91.109:3000/api/static${runData.inputImages.person.path}`,
       },
       services: {}
     };
