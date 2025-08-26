@@ -47,8 +47,8 @@ export function useGeneration({
   // Validation
   const canGenerate = Boolean(
     inputImages.model && 
-    inputImages.top && 
-    inputImages.bottom && 
+    inputImages.clothing && 
+    inputImages.person && 
     selectedRun
   );
 
@@ -56,8 +56,8 @@ export function useGeneration({
   const buildServiceParams = (parameters: ServiceParameters) => ({
     ...parameters,
     model_image: inputImages.model?.path || '',
-    top_garment: inputImages.top?.path || '',
-    bottom_garment: inputImages.bottom?.path || ''
+    top_garment: inputImages.clothing?.path || '',
+    bottom_garment: inputImages.person?.path || ''
   });
 
   // Generate service results
@@ -68,7 +68,7 @@ export function useGeneration({
     }
 
     if (!canGenerate) {
-      showError('Missing Images', 'Please select model, top, and bottom images');
+      showError('Missing Images', 'Please select model, clothing, and person images');
       return;
     }
 
@@ -152,7 +152,7 @@ export function useGeneration({
     }
 
     if (!canGenerate) {
-      showError('Missing Images', 'Please select model, top, and bottom images');
+      showError('Missing Images', 'Please select model, clothing, and person images');
       return;
     }
 

@@ -4,7 +4,7 @@ import { InputImages } from '@/hooks/useRunManager';
 
 export interface ImageModalState {
   isOpen: boolean;
-  type: 'model' | 'top' | 'bottom' | null;
+  type: 'model' | 'clothing' | 'person' | null;
 }
 
 export interface UseDashboardStateReturn {
@@ -18,7 +18,7 @@ export interface UseDashboardStateReturn {
   imagesError: string | null;
   
   // Actions
-  openImageModal: (type: 'model' | 'top' | 'bottom') => void;
+  openImageModal: (type: 'model' | 'clothing' | 'person') => void;
   closeImageModal: () => void;
   openHistoryPanel: () => void;
   closeHistoryPanel: () => void;
@@ -28,7 +28,7 @@ export interface UseDashboardStateReturn {
     updateInputImages: (images: InputImages) => Promise<void>
   ) => Promise<void>;
   handleImageClick: (
-    type: 'model' | 'top' | 'bottom',
+    type: 'model' | 'clothing' | 'person',
     currentImages: InputImages,
     inputsLocked: boolean
   ) => void;
@@ -46,7 +46,7 @@ export function useDashboardState(): UseDashboardStateReturn {
   const { images, isLoading: imagesLoading, error: imagesError } = useInputImages();
 
   // Modal management
-  const openImageModal = (type: 'model' | 'top' | 'bottom') => {
+  const openImageModal = (type: 'model' | 'clothing' | 'person') => {
     setImageModal({ isOpen: true, type });
   };
 
@@ -81,7 +81,7 @@ export function useDashboardState(): UseDashboardStateReturn {
 
   // Handle image click (select or view)
   const handleImageClick = (
-    type: 'model' | 'top' | 'bottom',
+    type: 'model' | 'clothing' | 'person',
     currentImages: InputImages,
     inputsLocked: boolean
   ) => {

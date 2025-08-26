@@ -31,8 +31,8 @@ export interface GenerateRequest {
   parameters: Record<string, unknown>;
   inputImages: {
     model: string;
-    top: string;
-    bottom: string;
+    clothing: string;
+    person: string;
   };
 }
 
@@ -69,7 +69,7 @@ export interface ImageListResponse {
   images: Array<{
     filename: string;
     path: string;
-    type: 'model' | 'top' | 'bottom';
+    type: 'model' | 'clothing' | 'person' | 'top' | 'bottom';
     size: number;
     lastModified: string;
   }>;

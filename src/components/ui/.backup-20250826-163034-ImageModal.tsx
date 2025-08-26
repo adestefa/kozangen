@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 interface ImageOption {
   filename: string;
   path: string;
-  type: 'model' | 'top' | 'bottom';
+  type: 'model' | 'clothing' | 'person';
   size: number;
   lastModified: string;
 }
@@ -15,7 +15,7 @@ interface ImageModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (image: ImageOption) => void;
-  imageType: 'model' | 'top' | 'bottom';
+  imageType: 'model' | 'clothing' | 'person';
   images: ImageOption[];
 }
 
@@ -33,16 +33,20 @@ export default function ImageModal({
   const getModalTitle = () => {
     switch (imageType) {
       case 'model': return 'Select Model Image';
-      case 'top': return 'Select Top Garment';
-      case 'bottom': return 'Select Bottom Garment';
+      case 'clothing': return 'Select Top Garment';
+      case 'person': return 'Select Bottom Garment';
       default: return 'Select Image';
     }
   };
 
   // Filter images by type and search term
   const getImageTypeFilter = (modalType: string) => {
-    // Direct mapping since types now match
-    return modalType;
+    switch (modalType) {
+      case 'model': return 'model';
+      case 'clothing': return 'top';  // Map clothing to top garments
+      case 'person': return 'bottom'; // Map person to bottom garments
+      default: return modalType;
+    }
   };
   
   const filteredImages = images.filter(img => 

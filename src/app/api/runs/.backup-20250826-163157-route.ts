@@ -48,7 +48,7 @@ export async function GET(_request: NextRequest) {
       status: run.status,
       totalResults: run.results?.length || 0,
       lastActivity: run.lastActivity || run.timestamp,
-      hasInputImages: !!(run.inputImages?.model && run.inputImages?.top && run.inputImages?.bottom),
+      hasInputImages: !!(run.inputImages?.model && run.inputImages?.clothing && run.inputImages?.person),
       isLocked: run.status === 'locked' || run.status === 'completed'
     }));
 

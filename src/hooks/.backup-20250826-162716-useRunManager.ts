@@ -4,8 +4,8 @@ import { useNotifications } from '@/hooks/useNotifications';
 
 export interface InputImages {
   model?: { type: 'model', path: string, filename: string };
-  top?: { type: 'top', path: string, filename: string };
-  bottom?: { type: 'bottom', path: string, filename: string };
+  clothing?: { type: 'clothing', path: string, filename: string };
+  person?: { type: 'person', path: string, filename: string };
 }
 
 export interface UseRunManagerReturn {

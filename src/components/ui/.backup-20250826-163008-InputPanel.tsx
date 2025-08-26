@@ -2,7 +2,7 @@
 'use client';
 
 interface InputImage {
-  type: 'model' | 'top' | 'bottom';
+  type: 'model' | 'clothing' | 'person';
   path?: string;
   filename?: string;
 }
@@ -10,10 +10,10 @@ interface InputImage {
 interface InputPanelProps {
   images: {
     model?: InputImage;
-    top?: InputImage;
-    bottom?: InputImage;
+    clothing?: InputImage;
+    person?: InputImage;
   };
-  onImageSelect: (type: 'model' | 'top' | 'bottom') => void;
+  onImageSelect: (type: 'model' | 'clothing' | 'person') => void;
   disabled?: boolean;
   locked?: boolean;
 }
@@ -21,8 +21,8 @@ interface InputPanelProps {
 export default function InputPanel({ images, onImageSelect, disabled = false, locked = false }: InputPanelProps) {
   const imageTypes = [
     { type: 'model' as const, label: 'Model', description: 'Select the model image' },
-    { type: 'top' as const, label: 'Top Garment', description: 'Select the top garment' },
-    { type: 'bottom' as const, label: 'Bottom Garment', description: 'Select the bottom garment' }
+    { type: 'clothing' as const, label: 'Top Garment', description: 'Select the top garment' },
+    { type: 'person' as const, label: 'Bottom Garment', description: 'Select the bottom garment' }
   ];
 
   return (

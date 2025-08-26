@@ -32,7 +32,7 @@ export default function Dashboard() {
   };
 
   // Handle image click (select or view when locked)
-  const handleImageSelect = (type: 'model' | 'top' | 'bottom') => {
+  const handleImageSelect = (type: 'model' | 'clothing' | 'person') => {
     dashboardState.handleImageClick(type, runManager.inputImages, runManager.inputsLocked);
   };
 
