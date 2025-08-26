@@ -1,0 +1,47 @@
+{
+  "runId": "0825_03",
+  "created": "2025-08-26T02:38:17.359Z",
+  "status": "draft",
+  "selections": {
+    "model_number": 1,
+    "top_number": 1,
+    "bottom_number": 1,
+    "model_file": "MODEL_1.png",
+    "top_file": "top_1.jpeg",
+    "bottom_file": "bottom_1.jpeg"
+  },
+  "urls": {
+    "model_url": "https://192.155.91.109:3000/api/static/input/models/MODEL_1.png",
+    "top_url": "https://192.155.91.109:3000/api/static/input/outfits/top_1.jpeg",
+    "bottom_url": "https://192.155.91.109:3000/api/static/input/outfits/bottom_1.jpeg"
+  },
+  "services": {
+    "fitroom": {
+      "status": "failed",
+      "currentStep": "error",
+      "steps": [
+        {
+          "step": "connecting",
+          "timestamp": "2025-08-26T02:38:17.359Z",
+          "message": "Connecting to Fitroom API..."
+        },
+        {
+          "step": "connecting",
+          "timestamp": "2025-08-26T02:38:17.360Z",
+          "message": "Connecting to Fitroom API..."
+        },
+        {
+          "step": "error",
+          "timestamp": "2025-08-26T02:38:17.378Z",
+          "message": "An unexpected error occurred. Please try again. write EPROTO 00D0BAE301000000:error:0A0000C6:SSL routines:tls_get_more_records:packet length too long:ssl/record/methods/tls_common.c:663:\n",
+          "error": "unknown_error"
+        }
+      ],
+      "versions": [],
+      "current_version": 0,
+      "startTime": "2025-08-26T02:38:17.360Z",
+      "error": "unknown_error",
+      "endTime": "2025-08-26T02:38:17.378Z"
+    }
+  }
+}

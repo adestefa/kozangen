@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     const { path: pathSegments } = await params;
-    const filePath = path.join(process.cwd(), 'input', ...pathSegments);
+    const filePath = path.join(process.cwd(), ...pathSegments);
 
     // Security check - ensure file is within input directory
     const inputDir = path.join(process.cwd(), 'input');

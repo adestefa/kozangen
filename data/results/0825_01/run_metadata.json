@@ -1,0 +1,47 @@
+{
+  "runId": "0825_01",
+  "created": "2025-08-26T00:52:14.907Z",
+  "status": "draft",
+  "selections": {
+    "model_number": 1,
+    "top_number": 1,
+    "bottom_number": 1,
+    "model_file": "MODEL_1.png",
+    "top_file": "top_1.jpeg",
+    "bottom_file": "bottom_1.jpeg"
+  },
+  "urls": {
+    "model_url": "http://192.155.91.109:3000/api/static/input/models/MODEL_1.png",
+    "top_url": "http://192.155.91.109:3000/api/static/input/outfits/top_1.jpeg",
+    "bottom_url": "http://192.155.91.109:3000/api/static/input/outfits/bottom_1.jpeg"
+  },
+  "services": {
+    "fitroom": {
+      "status": "failed",
+      "currentStep": "error",
+      "steps": [
+        {
+          "step": "connecting",
+          "timestamp": "2025-08-26T00:52:14.908Z",
+          "message": "Connecting to Fitroom API..."
+        },
+        {
+          "step": "connecting",
+          "timestamp": "2025-08-26T00:52:14.909Z",
+          "message": "Connecting to Fitroom API..."
+        },
+        {
+          "step": "error",
+          "timestamp": "2025-08-26T00:52:14.909Z",
+          "message": "An unexpected error occurred. Please try again. Protocol \"http:\" not supported. Expected \"https:\"",
+          "error": "unknown_error"
+        }
+      ],
+      "versions": [],
+      "current_version": 0,
+      "startTime": "2025-08-26T00:52:14.909Z",
+      "error": "unknown_error",
+      "endTime": "2025-08-26T00:52:14.909Z"
+    }
+  }
+}
