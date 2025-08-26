@@ -1,22 +1,17 @@
-// FitRoom service controller - Real Python script execution implementation
+// FitRoom service controller - Refactored with base class
 import { FitRoomParameters, ServiceResult } from '@/lib/types/service';
-import { historyLogger } from './history-logger';
-import { ServiceError, ValidationError } from '@/lib/utils/error-handler';
-import { showServiceStarted, showServiceSuccess, showServiceError } from '@/lib/utils/notifications';
-import { spawn } from 'child_process';
-import path from 'path';
+import { ValidationError } from '@/lib/utils/error-handler';
+import { BaseServiceManager } from './base-service-manager';
 
 /**
  * FitRoom Manager - Real Python script execution for FitRoom AI combo try-on process
- * Single call: Processes model + top + bottom in one Python execution
- * 
- * Executes: /opt/python_scripts/fitroom/test_job.py
- * Processing time: Real processing time depends on Python script execution
- * 
- * Unlike mock version, this executes actual Python scripts for generation
+ * Refactored to use BaseServiceManager for common functionality
  */
-export class FitRoomManager {
+export class FitRoomManager extends BaseServiceManager {
   private static instance: FitRoomManager;
+  
+  protected serviceName = 'fitroom';
+  protected scriptPath = '/opt/python_scripts/fitroom/test_job.py';
 
   static getInstance(): FitRoomManager {
     if (!FitRoomManager.instance) {
@@ -26,143 +21,46 @@ export class FitRoomManager {
   }
 
   /**
-   * Generate full outfit using FitRoom combo process (real Python execution)
-   * Executes: /opt/python_scripts/fitroom/test_job.py
+   * Generate full outfit using FitRoom combo process
    */
-  async generate(
-    runId: string,
-    parameters: FitRoomParameters
-  ): Promise<ServiceResult> {
-    const startTime = Date.now();
-    
-    // Validate parameters
-    this.validateParameters(parameters);
-
-    // Log the call
-    const callId = historyLogger.logCall({
-      service: 'fitroom',
-      action: 'generate',
-      parameters,
-      status: 'pending',
-      runId
-    });
-
-    showServiceStarted('FitRoom', 'generation');
-
-    try {
-      // Execute real Python script for FitRoom generation
-      const result = await this.executePythonScript(runId, parameters);
-      
-      const duration = Date.now() - startTime;
-      historyLogger.markSuccess(callId, result.imagePath, duration);
-      showServiceSuccess('FitRoom', 'generation');
-
-      return result;
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      historyLogger.markError(callId, errorMessage, duration);
-      showServiceError('FitRoom', 'generation', errorMessage);
-      
-      throw error;
-    }
+  async generate(runId: string, parameters: FitRoomParameters): Promise<ServiceResult> {
+    return this.executePythonScript(runId, parameters, 'generate');
   }
 
   /**
-   * Regenerate outfit with different parameters (real Python execution)
+   * Regenerate outfit with different parameters
    */
-  async regenerate(
-    runId: string,
-    parameters: FitRoomParameters,
-    version = 1
-  ): Promise<ServiceResult> {
-    const startTime = Date.now();
-    
-    // Validate parameters
-    this.validateParameters(parameters);
-
-    // Log the call
-    const callId = historyLogger.logCall({
-      service: 'fitroom',
-      action: 'regenerate',
-      parameters: { ...parameters, version },
-      status: 'pending',
-      runId
-    });
-
-    showServiceStarted('FitRoom', 'regeneration');
-
-    try {
-      // Execute real Python script for FitRoom regeneration
-      const result = await this.executePythonScript(runId, parameters, version + 1);
-      
-      const duration = Date.now() - startTime;
-      historyLogger.markSuccess(callId, result.imagePath, duration);
-      showServiceSuccess('FitRoom', 'regeneration');
-
-      return result;
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      historyLogger.markError(callId, errorMessage, duration);
-      showServiceError('FitRoom', 'regeneration', errorMessage);
-      
-      throw error;
-    }
+  async regenerate(runId: string, parameters: FitRoomParameters, version = 1): Promise<ServiceResult> {
+    const parametersWithVersion = { ...parameters, version };
+    return this.executePythonScript(runId, parametersWithVersion, 'regenerate');
   }
 
   /**
    * Validate FitRoom API parameters
    */
-  private validateParameters(parameters: FitRoomParameters): void {
-    if (!parameters.model_image) {
-      throw new ValidationError('Model image is required');
-    }
+  protected validateParameters(parameters: FitRoomParameters): void {
+    this.validateRequiredParam(parameters.model_image, 'model_image');
+    this.validateRequiredParam(parameters.top_garment, 'top_garment');
+    this.validateRequiredParam(parameters.bottom_garment, 'bottom_garment');
 
-    if (!parameters.top_garment) {
-      throw new ValidationError('Top garment image is required (cloth_image)');
-    }
-
-    if (!parameters.bottom_garment) {
-      throw new ValidationError('Bottom garment image is required (lower_cloth_image)');
-    }
-
-    // Validate cloth_type if provided (should always be 'combo' for full outfits)
+    // Validate cloth_type if provided
     if (parameters.cloth_type && parameters.cloth_type !== 'combo') {
-      throw new ValidationError('cloth_type must be "combo" for full outfit generation');
+      throw new ValidationError('cloth_type must be "combo" for full outfit generation', 'cloth_type');
     }
 
-    // Validate image file formats (FitRoom requires actual files, not URLs)
+    // Validate image file formats
     const filePattern = /\.(jpg|jpeg|png|webp)$/i;
-    if (!filePattern.test(parameters.model_image)) {
-      throw new ValidationError('Model image must be a valid image file (jpg, png, webp)');
-    }
-    if (!filePattern.test(parameters.top_garment)) {
-      throw new ValidationError('Top garment must be a valid image file (jpg, png, webp)');
-    }
-    if (!filePattern.test(parameters.bottom_garment)) {
-      throw new ValidationError('Bottom garment must be a valid image file (jpg, png, webp)');
-    }
+    this.validateImageFormat(parameters.model_image, 'model_image', filePattern);
+    this.validateImageFormat(parameters.top_garment, 'top_garment', filePattern);
+    this.validateImageFormat(parameters.bottom_garment, 'bottom_garment', filePattern);
   }
 
   /**
-   * Execute real Python script for FitRoom AI combo process
-   * Calls the Python script at /opt/python_scripts/fitroom/test_job.py
+   * Build script arguments for Python execution
    */
-  private async executePythonScript(
-    runId: string,
-    parameters: FitRoomParameters,
-    version = 1
-  ): Promise<ServiceResult> {
-    console.log(`[FitRoom] Starting Python script execution for run ${runId}`);
-
-    const scriptPath = '/opt/python_scripts/fitroom/test_job.py';
-    
-    // Prepare arguments for Python script
-    const args = [
-      scriptPath,
+  protected buildScriptArgs(runId: string, parameters: FitRoomParameters): string[] {
+    const version = (parameters as FitRoomParameters & { version?: number }).version || 1;
+    return [
       runId,
       parameters.model_image,
       parameters.top_garment,
@@ -171,60 +69,44 @@ export class FitRoomManager {
       '--hd-mode', String(parameters.hd_mode || true),
       '--version', String(version)
     ];
-
-    console.log(`[FitRoom] Executing: python3 ${args.join(' ')}`);
-
-    return new Promise<ServiceResult>((resolve, reject) => {
-      const pythonProcess = spawn('python3', args, {
-        cwd: path.dirname(scriptPath),
-      });
-
-      let stdout = '';
-      let stderr = '';
-
-      pythonProcess.stdout.on('data', (data) => {
-        stdout += data.toString();
-        console.log(`[FitRoom stdout]:`, data.toString().trim());
-      });
-
-      pythonProcess.stderr.on('data', (data) => {
-        stderr += data.toString();
-        console.error(`[FitRoom stderr]:`, data.toString().trim());
-      });
-
-      pythonProcess.on('close', (code) => {
-        if (code === 0) {
-          console.log(`[FitRoom] Python script completed successfully`);
-          
-          // Parse the result path from stdout or create expected path
-          const expectedPath = `/static/results/${runId}/fitroom/result_v${version}.jpg`;
-          
-          const result: ServiceResult = {
-            id: `fitroom_${runId}_v${version}_${Date.now()}`,
-            service: 'fitroom',
-            runId,
-            version,
-            imagePath: expectedPath,
-            parameters,
-            timestamp: new Date(),
-            status: 'success'
-          };
-
-          resolve(result);
-        } else {
-          console.error(`[FitRoom] Python script failed with exit code ${code}`);
-          console.error(`[FitRoom] stderr: ${stderr}`);
-          reject(new ServiceError(`FitRoom Python script execution failed: ${stderr}`, 'fitroom'));
-        }
-      });
-
-      pythonProcess.on('error', (err) => {
-        console.error(`[FitRoom] Failed to start Python script:`, err);
-        reject(new ServiceError(`Failed to start FitRoom Python script: ${err.message}`, 'fitroom'));
-      });
-    });
   }
 
+  /**
+   * Parse Python script result
+   */
+  protected parseResult(stdout: string, runId: string): ServiceResult {
+    const version = 1; // Default version for result parsing
+    
+    try {
+      // Try to parse from stdout output or create expected path
+      const expectedPath = `/static/results/${runId}/fitroom/result_v${version}.jpg`;
+      
+      return {
+        id: `fitroom_${runId}_v${version}_${Date.now()}`,
+        service: 'fitroom',
+        runId,
+        version,
+        imagePath: expectedPath,
+        parameters: {},
+        timestamp: new Date(),
+        status: 'success'
+      };
+    } catch (error) {
+      return this.parseImageResult(stdout, runId);
+    }
+  }
+
+  /**
+   * Validate image file format
+   */
+  private validateImageFormat(imagePath: string, paramName: string, pattern: RegExp): void {
+    if (!pattern.test(imagePath)) {
+      throw new ValidationError(
+        `${paramName} must be a valid image file (jpg, png, webp)`, 
+        paramName
+      );
+    }
+  }
 
   /**
    * Get service configuration and status
@@ -234,7 +116,7 @@ export class FitRoomManager {
       service: 'fitroom',
       name: 'FitRoom AI',
       version: 'v2',
-      scriptPath: '/opt/python_scripts/fitroom/test_job.py',
+      scriptPath: this.scriptPath,
       workflow: 'Python script execution with child_process.spawn',
       processingTime: 'Depends on Python script execution time',
       features: [
@@ -252,7 +134,7 @@ export class FitRoomManager {
       ],
       execution: {
         command: 'python3',
-        scriptPath: '/opt/python_scripts/fitroom/test_job.py',
+        scriptPath: this.scriptPath,
         timeout: 'No timeout (depends on script)',
         errorHandling: 'Exit code and stderr monitoring'
       },
@@ -266,7 +148,7 @@ export class FitRoomManager {
   }
 
   /**
-   * Get processing estimate based on parameters (real execution)
+   * Get processing estimate based on parameters
    */
   getProcessingEstimate(parameters: FitRoomParameters): { estimatedSeconds: number; factors: string[] } {
     const factors: string[] = ['Real Python script execution'];
