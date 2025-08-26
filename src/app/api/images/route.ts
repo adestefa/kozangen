@@ -7,7 +7,7 @@ import path from 'path';
 export async function GET(_request: NextRequest) {
   try {
     const inputDir = path.join(process.cwd(), 'input');
-    const images: any[] = [];
+    const images: ImageListResponse['images'] = [];
 
     // Read model images
     const modelsDir = path.join(inputDir, 'models');

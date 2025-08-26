@@ -69,7 +69,7 @@ export interface ImageListResponse {
   images: Array<{
     filename: string;
     path: string;
-    type: 'model' | 'clothing' | 'person';
+    type: 'model' | 'clothing' | 'person' | 'top' | 'bottom';
     size: number;
     lastModified: string;
   }>;

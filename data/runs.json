@@ -186,5 +186,15 @@
     "results": [],
     "lastActivity": "2025-08-26T02:57:42.821Z",
     "lockedAt": "2025-08-26T02:57:42.821Z"
+  },
+  {
+    "id": "run_1756224967674",
+    "name": "Test Persistence Run",
+    "timestamp": "2025-08-26T16:16:07.674Z",
+    "status": "draft",
+    "inputImages": {},
+    "aiSettings": {},
+    "results": [],
+    "lastActivity": "2025-08-26T16:16:07.674Z"
   }
 ]
