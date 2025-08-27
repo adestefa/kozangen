@@ -1,6 +1,7 @@
 // App header component matching screenshot design
 'use client';
 
+import Link from 'next/link';
 import packageInfo from '../../../package.json';
 
 export default function Header() {
@@ -21,9 +22,15 @@ export default function Header() {
 
             {/* Navigation */}
             <nav className="flex items-center space-x-6">
-              <div className="flex items-center space-x-1 bg-pink-500 text-white px-3 py-2 rounded">
+              <Link href="/" className="flex items-center space-x-1 bg-pink-500 text-white px-3 py-2 rounded">
                 <span className="text-sm font-medium">AI Generator</span>
-              </div>
+              </Link>
+              <Link href="/history" className="flex items-center space-x-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-3 py-2 rounded">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-medium">History</span>
+              </Link>
               <button className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -37,7 +44,7 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             <div className="text-right">
               <h1 className="text-lg font-semibold text-gray-900">AI Generator</h1>
-              <p className="text-sm text-gray-500">Compare Fashion AI Services - HuHu AI, FASHN AI, FitRoom</p>
+              <p className="text-sm text-gray-500">AI Fashion Generation Platform</p>
             </div>
             
             {/* User menu */}

@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const service = searchParams.get('service');
     const status = searchParams.get('status');
     const runId = searchParams.get('runId');
+    const search = searchParams.get('search');
     const limitParam = searchParams.get('limit');
     const offsetParam = searchParams.get('offset');
 
@@ -40,6 +41,14 @@ export async function GET(request: NextRequest) {
       filteredCalls = filteredCalls.filter(call => call.runId === runId);
     }
 
+    if (search) {
+      filteredCalls = filteredCalls.filter(call => 
+        call.id.toLowerCase().includes(search.toLowerCase()) ||
+        call.runId.toLowerCase().includes(search.toLowerCase()) ||
+        call.service.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
     // Sort by timestamp (newest first)
     filteredCalls.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -47,12 +56,18 @@ export async function GET(request: NextRequest) {
     const paginatedCalls = filteredCalls.slice(offset, offset + limit);
 
     // Calculate statistics
+    const successCalls = filteredCalls.filter(c => c.status === 'success').length;
+    const errorCalls = filteredCalls.filter(c => c.status === 'error').length;
+    const pendingCalls = filteredCalls.filter(c => c.status === 'pending').length;
+    const totalCalls = filteredCalls.length;
+    
     const stats = {
       totalCalls: allCalls.length,
-      filteredCalls: filteredCalls.length,
-      successCalls: filteredCalls.filter(c => c.status === 'success').length,
-      errorCalls: filteredCalls.filter(c => c.status === 'error').length,
-      pendingCalls: filteredCalls.filter(c => c.status === 'pending').length,
+      filteredCalls: totalCalls,
+      successCalls,
+      errorCalls,
+      pendingCalls,
+      successRate: totalCalls > 0 ? (successCalls / totalCalls) * 100 : 0,
       averageDuration: filteredCalls
         .filter(c => c.duration !== undefined)
         .reduce((sum, c) => sum + (c.duration || 0), 0) / filteredCalls.filter(c => c.duration !== undefined).length || 0,
