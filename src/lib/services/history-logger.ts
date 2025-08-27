@@ -1,6 +1,6 @@
 // Refactored service call logging system with modular architecture
 import { ServiceCall } from '@/lib/types/service';
-import { StorageManager } from './history/storage-manager';
+import { FileStorageManager } from './history/file-storage-manager';
 import { StatisticsAnalyzer } from './history/statistics-analyzer';
 import { QueryManager } from './history/query-manager';
 
@@ -22,12 +22,12 @@ class HistoryLogger {
   private readonly MAX_LOGS = 1000;
   
   // Specialized modules
-  private storageManager: StorageManager;
+  private storageManager: FileStorageManager;
   private statisticsAnalyzer: StatisticsAnalyzer;
   private queryManager: QueryManager;
 
   constructor() {
-    this.storageManager = new StorageManager();
+    this.storageManager = new FileStorageManager();
     this.statisticsAnalyzer = new StatisticsAnalyzer();
     this.queryManager = new QueryManager();
     

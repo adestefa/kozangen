@@ -1,0 +1,19 @@
+{
+  "id": "call_1756267132000_abc123xyz",
+  "service": "huhu",
+  "action": "generate",
+  "status": "success",
+  "runId": "run_1756267093152",
+  "timestamp": "2025-08-27T04:00:00.000Z",
+  "parameters": {
+    "model_image": "https://kgen.satori-ai-tech.com/api/static/input/models/MODEL_1.png",
+    "top_garment": "https://kgen.satori-ai-tech.com/api/static/input/outfits/top_1.jpeg",
+    "bottom_garment": "https://kgen.satori-ai-tech.com/api/static/input/outfits/bottom_1.jpeg",
+    "repaint_other_garment": true,
+    "repaint_hands": false,
+    "generate_matching_shoes": false
+  },
+  "resultPath": "/api/results/run_1756267093152/huhu_v1.png",
+  "duration": 18500,
+  "error": null
+}

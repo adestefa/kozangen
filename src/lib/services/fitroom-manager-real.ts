@@ -97,11 +97,7 @@ export class FitRoomManagerReal {
       const duration = Date.now() - startTime;
 
       // Log successful completion
-      historyLogger.updateCall(callId, {
-        status: 'completed',
-        duration,
-        resultUrl: `/api/results/${runId}/${filename}`
-      });
+      historyLogger.markSuccess(callId, `/api/results/${runId}/${filename}`, duration);
 
       showServiceSuccess('FitRoom', duration);
 
@@ -136,11 +132,7 @@ export class FitRoomManagerReal {
       ServiceLogger.logError(runId, 'fitroom', errorType, error instanceof Error ? error.message : 'Unknown error');
       
       // Log the failure for debugging
-      historyLogger.updateCall(callId, {
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        duration
-      });
+      historyLogger.markError(callId, error instanceof Error ? error.message : 'Unknown error', duration);
 
       showServiceError('FitRoom', error instanceof Error ? error.message : 'Unknown error');
       

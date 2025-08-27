@@ -24,3 +24,8 @@ docker-compose.yml
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Runtime directories (mounted as volumes)
+input/
+data/
+static/
