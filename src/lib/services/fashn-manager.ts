@@ -1,4 +1,4 @@
-// FASHN service controller - Sequential processing implementation
+// FASHN service controller - REAL API Integration (replacing mock implementation)
 import { FashnParameters, ServiceResult } from '@/lib/types/service';
 import { ValidationError, ServiceError } from '@/lib/utils/error-handler';
 import { historyLogger } from './history-logger';
@@ -7,12 +7,19 @@ import fs from 'fs/promises';
 import path from 'path';
 
 /**
- * FASHN Manager - Sequential processing implementation
- * Handles two-step FASHN AI process: top garment → intermediate → bottom garment → final
+ * FASHN Manager - Real API Integration for FASHN AI two-step process
+ * Replaces mock implementation with direct API calls to api.fashn.ai
  */
 export class FashnManager {
   private static instance: FashnManager;
+  
   private serviceName = 'fashn';
+  private apiKey = 'fa-dkrOiGYYPKfD-OCVacZnebuYBtmh1ZlFBOXhr';
+  private baseUrl = 'https://api.fashn.ai/v1';
+  
+  // Polling configuration
+  private maxPollingAttempts = 40; // 10 minutes max (40 * 15 seconds)
+  private pollingIntervalMs = 15000; // 15 seconds
 
   static getInstance(): FashnManager {
     if (!FashnManager.instance) {
@@ -47,36 +54,40 @@ export class FashnManager {
       
       // Step 1: Apply top garment to original model
       console.log('[FASHN] Step 1: Processing top garment...');
-      const topResult = await this.processSingleGarment(
+      const topJobId = await this.submitJob(
         parameters.model_image,
         parameters.top_garment,
-        resultsDir,
-        'top',
+        'tops',
         1
       );
-
-      // Step 2: Apply bottom garment to intermediate result
+      
+      const topResult = await this.pollJobStatus(topJobId);
+      
+      // Step 2: Apply bottom garment to step 1 result
       console.log('[FASHN] Step 2: Processing bottom garment...');
-      const finalResult = await this.processSingleGarment(
-        topResult.imagePath,
+      const bottomJobId = await this.submitJob(
+        topResult.imageUrl,
         parameters.bottom_garment,
-        resultsDir,
-        'final',
+        'bottoms',
         1
       );
-
+      
+      const finalResult = await this.pollJobStatus(bottomJobId);
+      
+      // Download final result to local storage
+      const outputPath = path.join(resultsDir, `fashn_v1.png`);
+      await this.downloadImage(finalResult.imageUrl, outputPath);
+      
       const duration = Date.now() - startTime;
-
-      // Create result object
       const result: ServiceResult = {
-        id: `fashn_${runId}_v1_${Date.now()}`,
+        id: `fashn_${runId}_${Date.now()}`,
         service: 'fashn',
         runId,
+        imagePath: `/input/results/${runId}/fashn_v1.png`,
+        status: 'success',
+        processingTime: `${duration}ms`,
         version: 1,
-        imagePath: finalResult.imagePath,
-        parameters,
-        timestamp: new Date(),
-        status: 'success'
+        parameters
       };
 
       // Mark as successful
@@ -86,13 +97,13 @@ export class FashnManager {
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown FASHN service error';
       
       // Mark as failed
       historyLogger.markError(callId, errorMessage, duration);
       showServiceError('FASHN', 'generate', errorMessage);
 
-      throw error;
+      throw new ServiceError(`FASHN service error: ${errorMessage}`, this.serviceName);
     }
   }
 
@@ -100,113 +111,121 @@ export class FashnManager {
    * Regenerate outfit with different parameters (version increment)
    */
   async regenerate(runId: string, parameters: FashnParameters, version = 2): Promise<ServiceResult> {
-    const startTime = Date.now();
-    
-    // Validate parameters
-    this.validateParameters(parameters);
-
-    // Log the call
-    const callId = historyLogger.logCall({
-      service: this.serviceName,
-      action: 'regenerate',
-      parameters,
-      status: 'pending',
-      runId
-    });
-
-    showServiceStarted('FASHN', 'regenerate');
-
-    try {
-      // Get existing results directory
-      const resultsDir = path.join(process.cwd(), 'data', 'results', runId, 'fashn');
-      
-      // Sequential processing for regeneration
-      console.log(`[FASHN] Regenerating v${version} - Step 1: Processing top garment...`);
-      const topResult = await this.processSingleGarment(
-        parameters.model_image,
-        parameters.top_garment,
-        resultsDir,
-        'top',
-        version
-      );
-
-      console.log(`[FASHN] Regenerating v${version} - Step 2: Processing bottom garment...`);
-      const finalResult = await this.processSingleGarment(
-        topResult.imagePath,
-        parameters.bottom_garment,
-        resultsDir,
-        'final',
-        version
-      );
-
-      const duration = Date.now() - startTime;
-
-      // Create result object
-      const result: ServiceResult = {
-        id: `fashn_${runId}_v${version}_${Date.now()}`,
-        service: 'fashn',
-        runId,
-        version,
-        imagePath: finalResult.imagePath,
-        parameters,
-        timestamp: new Date(),
-        status: 'success'
-      };
-
-      // Mark as successful
-      historyLogger.markSuccess(callId, result.imagePath, duration);
-      showServiceSuccess('FASHN', 'regenerate');
-
-      return result;
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
-      // Mark as failed
-      historyLogger.markError(callId, errorMessage, duration);
-      showServiceError('FASHN', 'regenerate', errorMessage);
-
-      throw error;
-    }
+    const parametersWithVersion = { ...parameters, version: version };
+    return this.generate(runId, parametersWithVersion);
   }
 
   /**
-   * Process single garment step (either top or bottom)
+   * Submit a job to FASHN API and return job ID
    */
-  private async processSingleGarment(
-    modelImagePath: string,
-    garmentImagePath: string,
-    resultsDir: string,
-    step: 'top' | 'final',
+  private async submitJob(
+    modelUrl: string,
+    garmentUrl: string,
+    category: string,
     version: number
-  ): Promise<{ imagePath: string }> {
-    // This is a mock implementation for now
-    // In production, this would call the actual FASHN API
+  ): Promise<string> {
+    const payload = {
+      model_name: 'tryon-v1.6',
+      inputs: {
+        model_image: modelUrl,
+        garment_image: garmentUrl,
+        mode: 'quality', // Use quality mode for best results
+        category: category, // 'tops' or 'bottoms'
+        seed: 42 // For reproducibility
+      }
+    };
+
+    console.log(`[FASHN] Submitting job for ${category} garment:`, payload);
+
+    const response = await fetch(`${this.baseUrl}/run`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+        'User-Agent': 'Kozangen/1.0.0'
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(60000) // 60 second timeout for submit
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`FASHN API error (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
     
-    console.log(`[FASHN] Processing ${step} garment step...`);
-    console.log(`[FASHN] Model: ${modelImagePath}`);
-    console.log(`[FASHN] Garment: ${garmentImagePath}`);
+    if (!data.id) {
+      throw new Error('FASHN API did not return a job ID');
+    }
+
+    console.log(`[FASHN] Job submitted successfully: ${data.id}`);
+    return data.id;
+  }
+
+  /**
+   * Poll job status until completion and return result
+   */
+  private async pollJobStatus(jobId: string): Promise<{ imageUrl: string; status: string }> {
+    console.log(`[FASHN] Polling job status: ${jobId}`);
     
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    for (let attempt = 0; attempt < this.maxPollingAttempts; attempt++) {
+      const response = await fetch(`${this.baseUrl}/status/${jobId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        signal: AbortSignal.timeout(30000) // 30 second timeout for status check
+      });
+
+      if (!response.ok) {
+        throw new Error(`FASHN status check failed (${response.status}): ${await response.text()}`);
+      }
+
+      const statusData = await response.json();
+      console.log(`[FASHN] Job ${jobId} status: ${statusData.status}`);
+
+      if (statusData.status === 'completed' || statusData.status === 'succeeded') {
+        const output = statusData.output || [];
+        if (output.length > 0) {
+          return {
+            imageUrl: output[0],
+            status: statusData.status
+          };
+        }
+        throw new Error('FASHN job completed but no output URL provided');
+      }
+
+      if (statusData.status === 'failed') {
+        throw new Error(`FASHN job failed: ${statusData.error || 'Unknown error'}`);
+      }
+
+      // Wait before next poll
+      await new Promise(resolve => setTimeout(resolve, this.pollingIntervalMs));
+    }
+
+    throw new Error(`FASHN job ${jobId} timed out after ${this.maxPollingAttempts * this.pollingIntervalMs / 1000} seconds`);
+  }
+
+  /**
+   * Download image from URL to local path
+   */
+  private async downloadImage(imageUrl: string, outputPath: string): Promise<void> {
+    console.log(`[FASHN] Downloading result image to: ${outputPath}`);
     
-    // Create mock result file paths following PRD naming convention
-    const filename = step === 'top' 
-      ? `fashn_v${version}_top.png`
-      : `fashn_v${version}.png`;
+    const response = await fetch(imageUrl, {
+      signal: AbortSignal.timeout(30000)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download FASHN result image: ${response.statusText}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    await fs.writeFile(outputPath, Buffer.from(arrayBuffer));
     
-    const outputPath = path.join(resultsDir, filename);
-    
-    // Create mock image file (in production, this would be the actual FASHN API result)
-    await this.createMockImageFile(outputPath);
-    
-    // Return path compatible with existing results route: /api/results/[runId]/[filename]
-    const runIdFromPath = path.basename(resultsDir);
-    const relativePath = `/api/results/${runIdFromPath}/${filename}`;
-    
-    console.log(`[FASHN] ${step} step completed: ${relativePath}`);
-    
-    return { imagePath: relativePath };
+    console.log(`[FASHN] Image downloaded successfully: ${outputPath}`);
   }
 
   /**
@@ -227,56 +246,36 @@ export class FashnManager {
     }
   }
 
-  /**
-   * Create mock image file (placeholder for actual FASHN API result)
-   */
-  private async createMockImageFile(outputPath: string): Promise<void> {
-    try {
-      // Create a simple text file as placeholder (in production, this would be actual image bytes)
-      const mockImageData = `Mock FASHN result generated at ${new Date().toISOString()}`;
-      await fs.writeFile(outputPath, mockImageData);
-      console.log(`[FASHN] Created mock result file: ${outputPath}`);
-    } catch (error) {
-      throw new ServiceError(
-        `Failed to create result file: ${error.message}`,
-        'file_creation_failed'
-      );
-    }
-  }
 
   /**
    * Validate FASHN API parameters
    */
   private validateParameters(parameters: FashnParameters): void {
-    this.validateRequiredParam(parameters.model_image, 'model_image');
-    this.validateRequiredParam(parameters.top_garment, 'top_garment');
-    this.validateRequiredParam(parameters.bottom_garment, 'bottom_garment');
-
-    // Validate image file formats
-    const filePattern = /\.(jpg|jpeg|png|webp)$/i;
-    this.validateImageFormat(parameters.model_image, 'model_image', filePattern);
-    this.validateImageFormat(parameters.top_garment, 'top_garment', filePattern);
-    this.validateImageFormat(parameters.bottom_garment, 'bottom_garment', filePattern);
-  }
-
-  /**
-   * Validate required parameter
-   */
-  private validateRequiredParam(value: unknown, paramName: string): void {
-    if (!value) {
-      throw new ValidationError(`Missing required parameter: ${paramName}`, paramName);
+    if (!parameters.model_image) {
+      throw new ValidationError('model_image parameter is required', this.serviceName);
     }
-  }
+    
+    if (!parameters.top_garment) {
+      throw new ValidationError('top_garment parameter is required', this.serviceName);
+    }
+    
+    if (!parameters.bottom_garment) {
+      throw new ValidationError('bottom_garment parameter is required', this.serviceName);
+    }
 
-  /**
-   * Validate image file format
-   */
-  private validateImageFormat(imagePath: string, paramName: string, pattern: RegExp): void {
-    if (!pattern.test(imagePath)) {
-      throw new ValidationError(
-        `${paramName} must be a valid image file (jpg, png, webp)`, 
-        paramName
-      );
+    // Validate image URLs
+    const urlPattern = /^https?:\/\/.+/i;
+    
+    if (!urlPattern.test(parameters.model_image)) {
+      throw new ValidationError('model_image must be a valid URL', this.serviceName);
+    }
+    
+    if (!urlPattern.test(parameters.top_garment)) {
+      throw new ValidationError('top_garment must be a valid URL', this.serviceName);
+    }
+    
+    if (!urlPattern.test(parameters.bottom_garment)) {
+      throw new ValidationError('bottom_garment must be a valid URL', this.serviceName);
     }
   }
 

@@ -53,12 +53,18 @@ export function useGeneration({
   );
 
   // Build service parameters from input images
-  const buildServiceParams = (parameters: ServiceParameters) => ({
-    ...parameters,
-    model_image: inputImages.model?.path || '',
-    top_garment: inputImages.top?.path || '',
-    bottom_garment: inputImages.bottom?.path || ''
-  });
+  const buildServiceParams = (parameters: ServiceParameters) => {
+    const baseUrl = typeof window !== 'undefined' 
+      ? `${window.location.protocol}//${window.location.host}`
+      : 'http://localhost:3003'; // fallback for SSR
+    
+    return {
+      ...parameters,
+      model_image: inputImages.model?.path ? `${baseUrl}/api/static${inputImages.model.path}` : '',
+      top_garment: inputImages.top?.path ? `${baseUrl}/api/static${inputImages.top.path}` : '',
+      bottom_garment: inputImages.bottom?.path ? `${baseUrl}/api/static${inputImages.bottom.path}` : ''
+    };
+  };
 
   // Generate service results
   const handleGenerate = async (service: ServiceType, parameters: ServiceParameters) => {

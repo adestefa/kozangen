@@ -11,7 +11,11 @@ export async function GET(
     const { runId, filename } = await params;
     
     // Security: Validate runId and filename to prevent directory traversal
-    if (!runId.match(/^\d{4}_\d{2}$/) || !filename.match(/^[\w_-]+\.(png|jpg|jpeg)$/i)) {
+    // Support both old format (0826_15) and new format (run_1756255302774)
+    const validRunId = runId.match(/^(run_\d+|\d{4}_\d{2}|TEST_\d+|test_[\w_]+)$/);
+    const validFilename = filename.match(/^[\w_-]+\.(png|jpg|jpeg)$/i);
+    
+    if (!validRunId || !validFilename) {
       return new NextResponse('Invalid request', { status: 400 });
     }
 
